@@ -20,23 +20,91 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Smith is a Kotlin/JVM AI agent application built with the Koog Agents framework. It implements a Clinical Nutrition & Dietetics Specialist chatbot that collects user health information and generates personalized diet plans.
+Smith is a Kotlin/JVM AI agent application built with the Koog Agents framework. It implements a Clinical Nutrition & Dietetics Specialist that collects user health information via CLI and generates personalized diet plans using Google Gemini.
 
 ## Architecture
 
-The application uses a graph-based agent strategy pattern from Koog Agents:
-
 - **Main entry point**: `src/main/kotlin/Main.kt`
-- **LLM Provider**: Google Gemini (configured via `application.conf` which is gitignored)
-- **Agent Strategy**: Two-step workflow graph:
-  1. `userAssessmentStep` - Collects user information via conversation
-  2. `generateDietPlanStep` - Creates diet plan from assessment data
+- **LLM Provider**: Google Gemini 2.5 Flash (configured via `application.conf` which is gitignored)
 
-**Key Koog Agents concepts used:**
-- `AIAgent` with custom `strategy` DSL
-- `subgraphWithTask` for typed input/output subgraphs
-- `ToolRegistry` with `SayToUser` and `AskUser` tools
-- XML-based prompt construction via `xml { }` DSL
+**Data Flow:**
+1. CLI collects user assessment (name, age, height, weight, gender, health goal, dietary restriction, activity level)
+2. Facts are stored in memory via `InMemoryProvider` with `UserSubject`
+3. Assessment is formatted into a prompt and sent to the agent
+4. Agent generates personalized diet plan with BMR/TDEE calculations and meal suggestions
+
+**Key Components:**
+- `UserAssessment` - Data class with user profile information
+- `UserSubject` - Custom `MemorySubject` for user facts
+- `InMemoryProvider` - Implements `AgentMemoryProvider` for in-memory fact storage
+- `collectUserAssessmentFromCLI()` - CLI-based enum selection for user input
+- `formatAssessmentForPrompt()` - Converts assessment to LLM prompt
+
+## Koog Agents Framework
+
+Documentation: https://docs.koog.ai/
+
+**Strategy Pattern:**
+```kotlin
+strategy = strategy<String, String>("strategy-name") {
+    val nodeSendToLLM by nodeLLMRequest()
+
+    edge(nodeStart forwardTo nodeSendToLLM)
+    edge(nodeSendToLLM forwardTo nodeFinish onAssistantMessage { true })
+}
+```
+
+**Key Imports:**
+```kotlin
+// Core agent
+import ai.koog.agents.core.agent.AIAgent
+import ai.koog.agents.core.dsl.builder.forwardTo
+import ai.koog.agents.core.dsl.builder.strategy
+
+// Nodes and edges
+import ai.koog.agents.core.dsl.extension.nodeLLMRequest
+import ai.koog.agents.core.dsl.extension.onAssistantMessage
+import ai.koog.agents.core.dsl.extension.nodeExecuteTool
+import ai.koog.agents.core.dsl.extension.onToolCall
+
+// Memory (requires agents-features-memory-jvm dependency)
+import ai.koog.agents.memory.feature.AgentMemory
+import ai.koog.agents.memory.model.Concept
+import ai.koog.agents.memory.model.Fact
+import ai.koog.agents.memory.model.SingleFact
+import ai.koog.agents.memory.model.FactType
+import ai.koog.agents.memory.model.MemoryScope
+import ai.koog.agents.memory.model.MemorySubject
+import ai.koog.agents.memory.providers.AgentMemoryProvider
+
+// LLM providers
+import ai.koog.prompt.executor.clients.google.GoogleModels
+import ai.koog.prompt.executor.llms.all.simpleGoogleAIExecutor
+```
+
+**Memory System:**
+- `MemorySubject` - Abstract class for organizing facts (extend to create custom subjects)
+- `MemoryScope` - Sealed interface: `Agent(name)`, `Feature(id)`, `Product(name)`, `CrossProduct`
+- `SingleFact` - Data class: `SingleFact(concept, timestamp, value)`
+- `Concept` - Data class: `Concept(keyword, description, factType)`
+- `AgentMemoryProvider` - Interface with `save()`, `load()`, `loadAll()`, `loadByDescription()`
+
+**Installing AgentMemory:**
+```kotlin
+AIAgent(...) {
+    install(AgentMemory) {
+        memoryProvider = myProvider
+        agentName = "agent-name"
+        featureName = "feature-name"
+        organizationName = "org-name"
+        productName = "product-name"
+    }
+}
+```
+
+**Common Strategy Patterns:**
+- Simple LLM call: `nodeStart → nodeLLMRequest → nodeFinish`
+- With tools: Add `nodeExecuteTool`, `nodeLLMSendToolResult`, handle `onToolCall { true }`
 
 ## Configuration
 
@@ -50,6 +118,7 @@ provider {
 ## Dependencies
 
 - Kotlin 2.2.x with JVM 21
-- Koog Agents 0.6.0 (AI agent framework)
+- Koog Agents 0.6.0 (`ai.koog:koog-agents`)
+- Koog Memory (`ai.koog:agents-features-memory-jvm:0.6.0`)
 - Typesafe Config for configuration
 - kotlinx-serialization-json for JSON handling
