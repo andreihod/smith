@@ -54,34 +54,6 @@ strategy = strategy<String, String>("strategy-name") {
 }
 ```
 
-**Key Imports:**
-```kotlin
-// Core agent
-import ai.koog.agents.core.agent.AIAgent
-import ai.koog.agents.core.dsl.builder.forwardTo
-import ai.koog.agents.core.dsl.builder.strategy
-
-// Nodes and edges
-import ai.koog.agents.core.dsl.extension.nodeLLMRequest
-import ai.koog.agents.core.dsl.extension.onAssistantMessage
-import ai.koog.agents.core.dsl.extension.nodeExecuteTool
-import ai.koog.agents.core.dsl.extension.onToolCall
-
-// Memory (requires agents-features-memory-jvm dependency)
-import ai.koog.agents.memory.feature.AgentMemory
-import ai.koog.agents.memory.model.Concept
-import ai.koog.agents.memory.model.Fact
-import ai.koog.agents.memory.model.SingleFact
-import ai.koog.agents.memory.model.FactType
-import ai.koog.agents.memory.model.MemoryScope
-import ai.koog.agents.memory.model.MemorySubject
-import ai.koog.agents.memory.providers.AgentMemoryProvider
-
-// LLM providers
-import ai.koog.prompt.executor.clients.google.GoogleModels
-import ai.koog.prompt.executor.llms.all.simpleGoogleAIExecutor
-```
-
 **Memory System:**
 - `MemorySubject` - Abstract class for organizing facts (extend to create custom subjects)
 - `MemoryScope` - Sealed interface: `Agent(name)`, `Feature(id)`, `Product(name)`, `CrossProduct`
