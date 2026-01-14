@@ -22,6 +22,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Smith is a Kotlin/JVM AI agent application built with the Koog Agents framework. It implements a Clinical Nutrition & Dietetics Specialist that collects user health information via CLI and generates personalized diet plans using Google Gemini.
 
+**See `koog-example/` for Koog framework implementation examples** (tool calling, routing, streaming, memory, MCP integration, Spring Boot, Compose Multiplatform).
+
 ## Architecture
 
 - **Main entry point**: `src/main/kotlin/Main.kt`
