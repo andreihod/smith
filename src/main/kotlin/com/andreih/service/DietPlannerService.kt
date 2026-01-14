@@ -8,6 +8,7 @@ import ai.koog.agents.memory.providers.AgentMemoryProvider
 import com.andreih.agent.DietPlannerAgent
 import com.andreih.agent.memory.InMemoryProvider
 import com.andreih.agent.memory.UserSubject
+import com.andreih.agent.tools.DietUserTools
 import com.andreih.domain.UserAssessment
 import com.andreih.io.OutputProvider
 import com.andreih.io.UserInputProvider
@@ -26,7 +27,19 @@ class DietPlannerService(
 
         saveAssessmentToMemory(assessment)
 
-        val agent = DietPlannerAgent.create(geminiApiKey, memoryProvider)
+        // Create user interaction callback for the agent to get feedback
+        val showMessageAndGetFeedback: suspend (String) -> String = { message ->
+            outputProvider.showResult(message)
+            outputProvider.showMessage("\n" + "=".repeat(50))
+            outputProvider.showMessage("Do you approve this diet plan?")
+            outputProvider.showMessage("Type 'yes' to approve, or describe any changes you'd like:")
+            outputProvider.showMessage("=".repeat(50))
+            print("> ")
+            readlnOrNull() ?: "yes"
+        }
+
+        val userTools = DietUserTools(showMessageAndGetFeedback)
+        val agent = DietPlannerAgent.create(geminiApiKey, memoryProvider, userTools)
         val prompt = DietPlannerAgent.formatAssessmentForPrompt(assessment)
         val result = agent.run(prompt)
 
