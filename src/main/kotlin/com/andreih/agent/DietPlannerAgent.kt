@@ -1,15 +1,18 @@
 package com.andreih.agent
 
 import ai.koog.agents.core.agent.AIAgent
-import ai.koog.agents.core.dsl.builder.forwardTo
 import ai.koog.agents.core.dsl.builder.strategy
-import ai.koog.agents.core.dsl.extension.nodeLLMRequest
-import ai.koog.agents.core.dsl.extension.onAssistantMessage
 import ai.koog.agents.core.tools.ToolRegistry
+import ai.koog.agents.ext.agent.subgraphWithTask
+import ai.koog.agents.memory.config.MemoryScopeType
 import ai.koog.agents.memory.feature.AgentMemory
+import ai.koog.agents.memory.feature.nodes.nodeLoadFromMemory
+import ai.koog.agents.memory.model.Concept
+import ai.koog.agents.memory.model.FactType
 import ai.koog.agents.memory.providers.AgentMemoryProvider
 import ai.koog.prompt.executor.llms.all.simpleGoogleAIExecutor
 import ai.koog.prompt.executor.clients.google.GoogleModels
+import com.andreih.agent.memory.UserSubject
 import com.andreih.domain.UserAssessment
 
 object DietPlannerAgent {
@@ -42,6 +45,18 @@ object DietPlannerAgent {
         You have access to facts about the user loaded in your memory. Use this information to create a personalized diet plan.
     """.trimIndent()
 
+    private val userProfileConcept = Concept(
+        keyword = "user-profile",
+        description = """
+            User profile information including:
+            - Name, age, height, weight, gender
+            - Health goals and dietary restrictions
+            - Activity level
+            This information is used to create personalized diet plans.
+        """.trimIndent(),
+        factType = FactType.MULTIPLE
+    )
+
     fun create(
         geminiApiKey: String,
         memoryProvider: AgentMemoryProvider
@@ -54,10 +69,21 @@ object DietPlannerAgent {
             llmModel = GoogleModels.Gemini2_5Flash,
             toolRegistry = registry,
             strategy = strategy<String, String>("diet-planner-strategy") {
-                val nodeSendToLLM by nodeLLMRequest()
+                val loadMemory by subgraph<String, String>(tools = emptyList()) {
+                    val nodeLoadUserProfile by nodeLoadFromMemory<String>(
+                        concept = userProfileConcept,
+                        subject = UserSubject,
+                        scope = MemoryScopeType.AGENT
+                    )
 
-                edge(nodeStart forwardTo nodeSendToLLM)
-                edge(nodeSendToLLM forwardTo nodeFinish onAssistantMessage { true })
+                    nodeStart then nodeLoadUserProfile then nodeFinish
+                }
+
+                val generateDietPlan by subgraphWithTask<String, String>(tools = emptyList()) { userInput ->
+                    userInput
+                }
+
+                nodeStart then loadMemory then generateDietPlan then nodeFinish
             }
         ) {
             install(AgentMemory) {

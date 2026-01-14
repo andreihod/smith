@@ -38,19 +38,25 @@ class DietPlannerService(
         val subject = UserSubject
         val timestamp = System.currentTimeMillis()
 
+        val userProfileConcept = Concept(
+            keyword = "user-profile",
+            description = "User profile information including name, age, height, weight, gender, health goals, dietary restrictions, and activity level",
+            factType = FactType.MULTIPLE
+        )
+
         listOf(
-            Triple("user-name", "The name of the user", "The user's name is ${assessment.name}"),
-            Triple("user-age", "The age of the user in years", "The user is ${assessment.age} years old"),
-            Triple("user-height", "The height of the user in centimeters", "The user is ${assessment.heightCm} cm tall"),
-            Triple("user-weight", "The weight of the user in kilograms", "The user weighs ${assessment.currentWeightKg} kg"),
-            Triple("user-gender", "The gender of the user", "The user's gender is ${assessment.gender.name.lowercase()}"),
-            Triple("user-health-goal", "The health goal of the user", "The user's health goal is ${assessment.healthGoal.name.replace("_", " ").lowercase()}"),
-            Triple("user-dietary-restriction", "Any dietary restrictions the user has", "The user's dietary restriction is ${assessment.dietaryRestriction.name.replace("_", " ").lowercase()}"),
-            Triple("user-activity-level", "How active the user is", "The user's activity level is ${assessment.activityLevel.name.replace("_", " ").lowercase()}")
-        ).forEach { (keyword, description, value) ->
+            "The user's name is ${assessment.name}",
+            "The user is ${assessment.age} years old",
+            "The user is ${assessment.heightCm} cm tall",
+            "The user weighs ${assessment.currentWeightKg} kg",
+            "The user's gender is ${assessment.gender.name.lowercase()}",
+            "The user's health goal is ${assessment.healthGoal.name.replace("_", " ").lowercase()}",
+            "The user's dietary restriction is ${assessment.dietaryRestriction.name.replace("_", " ").lowercase()}",
+            "The user's activity level is ${assessment.activityLevel.name.replace("_", " ").lowercase()}"
+        ).forEach { value ->
             memoryProvider.save(
                 fact = SingleFact(
-                    concept = Concept(keyword, description, FactType.SINGLE),
+                    concept = userProfileConcept,
                     timestamp = timestamp,
                     value = value
                 ),
