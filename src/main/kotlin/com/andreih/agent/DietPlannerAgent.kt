@@ -54,6 +54,16 @@ object DietPlannerAgent {
 
         ### USER INFORMATION
         You have access to facts about the user loaded in your memory. Use this information to create a personalized diet plan.
+        The user's preferred language and country/region are stored in memory.
+
+        ### LOCALIZATION & CULTURAL ADAPTATION
+        - **Communication Language**: ALL explanations, recommendations, and text MUST be written in the user's preferred language.
+        - **Cultural Food Preferences**: Prioritize foods, ingredients, and meal patterns typical to the user's country/region.
+        - **Meal Timing**: Adapt meal timing suggestions to align with cultural norms (e.g., late dinners in Spain, early dinners in USA).
+        - **Portion Descriptions**: Use measurement units and portion sizes common in the user's region (e.g., cups/ounces in USA, grams/ml in Europe).
+        - **Food Availability**: Recommend foods that are readily available and commonly consumed in the user's region.
+        - **Culinary Context**: Reference traditional dishes or cooking methods when appropriate to increase adherence.
+        - **Balanced Approach**: While respecting cultural preferences, maintain nutritional accuracy and scientific rigor.
     """.trimIndent()
 
     private val userProfileConcept = Concept(
@@ -307,6 +317,8 @@ object DietPlannerAgent {
     private fun parseAssessmentFromInput(userInput: String): UserAssessment {
         val lines = userInput.lines()
         var name = ""
+        var language = UserLanguage.ENGLISH
+        var country = UserCountry.INTERNATIONAL
         var age = 0
         var heightCm = 0
         var currentWeightKg = 0.0
@@ -318,6 +330,18 @@ object DietPlannerAgent {
         for (line in lines) {
             when {
                 line.contains("Name:") -> name = line.substringAfter("Name:").trim()
+                line.contains("Language:", ignoreCase = true) -> {
+                    val langStr = line.substringAfter(":").trim().lowercase()
+                    language = UserLanguage.values().find {
+                        it.displayName.lowercase().contains(langStr) || it.name.lowercase().contains(langStr)
+                    } ?: UserLanguage.ENGLISH
+                }
+                line.contains("Country:", ignoreCase = true) -> {
+                    val countryStr = line.substringAfter(":").trim().lowercase()
+                    country = UserCountry.values().find {
+                        it.displayName.lowercase().contains(countryStr) || it.name.lowercase().contains(countryStr)
+                    } ?: UserCountry.INTERNATIONAL
+                }
                 line.contains("Age:") -> age = line.substringAfter("Age:").replace(Regex("[^0-9]"), "").toIntOrNull() ?: 0
                 line.contains("Height:") -> heightCm = line.substringAfter("Height:").replace(Regex("[^0-9]"), "").toIntOrNull() ?: 0
                 line.contains("Weight:") -> currentWeightKg = line.substringAfter("Weight:").replace(Regex("[^0-9.]"), "").toDoubleOrNull() ?: 0.0
@@ -364,6 +388,8 @@ object DietPlannerAgent {
 
         return UserAssessment(
             name = name,
+            language = language,
+            country = country,
             age = age,
             heightCm = heightCm,
             currentWeightKg = currentWeightKg,
@@ -447,10 +473,13 @@ object DietPlannerAgent {
         Generate a detailed, personalized diet plan that EXACTLY matches the following nutritional targets.
         You MUST ensure all meals sum up to the target macros within a 5% tolerance.
         Return ONLY a valid DietPlan structure with all required fields.
+        ALL TEXT must be in ${request.assessment.language.displayName}.
         </instructions>
 
         <user_profile>
         - Name: ${request.assessment.name}
+        - Language: ${request.assessment.language.displayName}
+        - Country: ${request.assessment.country.displayName}
         - Age: ${request.assessment.age} years
         - Height: ${request.assessment.heightCm} cm
         - Weight: ${request.assessment.currentWeightKg} kg
@@ -459,6 +488,10 @@ object DietPlannerAgent {
         - Dietary Restriction: ${request.assessment.dietaryRestriction.name.replace("_", " ").lowercase()}
         - Activity Level: ${request.assessment.activityLevel.name.replace("_", " ").lowercase()}
         </user_profile>
+
+        <cultural_context>
+        ${request.assessment.country.dietaryContext}
+        </cultural_context>
 
         <nutritional_targets>
         - Daily Calories: ${request.macros.dailyCalorieTarget} kcal
@@ -478,6 +511,9 @@ object DietPlannerAgent {
         6. All nutritional values must be realistic and accurate
         7. Total macros MUST match targets (within 5% tolerance)
         8. Each food item must have accurate calorie and macro values
+        9. Prioritize foods commonly available in ${request.assessment.country.displayName}
+        10. Use meal patterns and timing typical for ${request.assessment.country.displayName}
+        11. All recommendations and explanations MUST be written in ${request.assessment.language.displayName}
         </requirements>
     """.trimIndent()
 
@@ -485,10 +521,13 @@ object DietPlannerAgent {
         <instructions>
         The previous diet plan did not meet the nutritional targets. Generate a CORRECTED plan that exactly matches the targets.
         Return ONLY a valid DietPlan structure with all required fields.
+        ALL TEXT must be in ${request.assessment.language.displayName}.
         </instructions>
 
         <user_profile>
         - Name: ${request.assessment.name}
+        - Language: ${request.assessment.language.displayName}
+        - Country: ${request.assessment.country.displayName}
         - Age: ${request.assessment.age} years
         - Height: ${request.assessment.heightCm} cm
         - Weight: ${request.assessment.currentWeightKg} kg
@@ -497,6 +536,10 @@ object DietPlannerAgent {
         - Dietary Restriction: ${request.assessment.dietaryRestriction.name.replace("_", " ").lowercase()}
         - Activity Level: ${request.assessment.activityLevel.name.replace("_", " ").lowercase()}
         </user_profile>
+
+        <cultural_context>
+        ${request.assessment.country.dietaryContext}
+        </cultural_context>
 
         <nutritional_targets>
         - Daily Calories: ${request.macros.dailyCalorieTarget} kcal
@@ -519,6 +562,8 @@ object DietPlannerAgent {
         3. Ensure total macros EXACTLY match targets (within 5% tolerance)
         4. Keep user preferences and restrictions in mind
         5. Double-check all calculations before finalizing
+        6. Maintain culturally appropriate foods for ${request.assessment.country.displayName}
+        7. All text MUST be in ${request.assessment.language.displayName}
         </requirements>
     """.trimIndent()
 
@@ -526,6 +571,7 @@ object DietPlannerAgent {
         <instructions>
         The user has requested changes to the diet plan. Incorporate their feedback while maintaining nutritional targets.
         Return ONLY a valid DietPlan structure with all required fields.
+        ALL TEXT must be in ${request.assessment.language.displayName}.
         </instructions>
 
         <user_feedback>
@@ -540,8 +586,14 @@ object DietPlannerAgent {
         </nutritional_targets>
 
         <user_profile>
+        - Language: ${request.assessment.language.displayName}
+        - Country: ${request.assessment.country.displayName}
         - Dietary Restriction: ${request.assessment.dietaryRestriction.name.replace("_", " ").lowercase()}
         </user_profile>
+
+        <cultural_context>
+        ${request.assessment.country.dietaryContext}
+        </cultural_context>
 
         <previous_plan>
         ${request.previousPlan.toMarkdownString()}
@@ -553,6 +605,8 @@ object DietPlannerAgent {
         3. Keep dietary restrictions: ${request.assessment.dietaryRestriction.name}
         4. If user requests conflict with targets, find the best compromise
         5. Ensure all food substitutions maintain similar macro profiles
+        6. Maintain culturally appropriate foods for ${request.assessment.country.displayName}
+        7. All text MUST be in ${request.assessment.language.displayName}
         </requirements>
     """.trimIndent()
 
@@ -598,6 +652,8 @@ object DietPlannerAgent {
             Generate a comprehensive personalized diet plan based on the following user profile:
 
             - Name: ${assessment.name}
+            - Language: ${assessment.language.displayName}
+            - Country: ${assessment.country.displayName}
             - Age: ${assessment.age} years old
             - Height: ${assessment.heightCm} cm
             - Weight: ${assessment.currentWeightKg} kg
@@ -605,6 +661,9 @@ object DietPlannerAgent {
             - Health Goal: ${assessment.healthGoal.name.replace("_", " ").lowercase()}
             - Dietary Restriction: ${assessment.dietaryRestriction.name.replace("_", " ").lowercase()}
             - Activity Level: ${assessment.activityLevel.name.replace("_", " ").lowercase()}
+
+            IMPORTANT: All text in the diet plan MUST be written in ${assessment.language.displayName}.
+            Prioritize foods and meal patterns common in ${assessment.country.displayName}.
 
             Please provide a detailed diet plan including daily calorie targets, macronutrient breakdown, and sample meal suggestions.
         """.trimIndent()

@@ -53,12 +53,14 @@ class DietPlannerService(
 
         val userProfileConcept = Concept(
             keyword = "user-profile",
-            description = "User profile information including name, age, height, weight, gender, health goals, dietary restrictions, and activity level",
+            description = "User profile information including name, age, height, weight, gender, health goals, dietary restrictions, activity level, language, and country",
             factType = FactType.MULTIPLE
         )
 
         listOf(
             "The user's name is ${assessment.name}",
+            "The user's preferred language is ${assessment.language.displayName}",
+            "The user is from ${assessment.country.displayName}",
             "The user is ${assessment.age} years old",
             "The user is ${assessment.heightCm} cm tall",
             "The user weighs ${assessment.currentWeightKg} kg",

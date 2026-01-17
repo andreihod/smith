@@ -11,6 +11,9 @@ class CliUserInput : UserInputProvider {
         print("What is your name? ")
         val name = readln()
 
+        val language = selectEnum<UserLanguage>("What is your preferred language?")
+        val country = selectEnum<UserCountry>("What is your country or region?")
+
         print("What is your age? ")
         val age = readln().toIntOrNull() ?: 30
 
@@ -27,6 +30,8 @@ class CliUserInput : UserInputProvider {
 
         return UserAssessment(
             name = name,
+            language = language,
+            country = country,
             age = age,
             heightCm = height,
             currentWeightKg = weight,
